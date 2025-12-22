@@ -3,14 +3,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Habit, HabitLog, AIInsight, UserStats } from './types';
 import { formatDate, getPastDates } from './constants';
 import { getHabitInsights } from './services/geminiService';
-import { auth, db } from './services/firebase';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import Heatmap from './components/Heatmap';
 import HabitManager from './components/HabitManager';
 import HabitDetail from './components/HabitDetail';
 import MasterGoalDetail from './components/MasterGoalDetail';
-import AuthGateway from './components/AuthGateway';
 import { 
   BarChart3, 
   Sparkles,
@@ -26,74 +22,33 @@ import {
   ChevronRight,
   TrendingUp,
   Target,
-  ArrowLeft,
-  LogOut,
-  User as UserIcon
+  ArrowLeft
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [logs, setLogs] = useState<HabitLog>({});
-  const [stats, setStats] = useState<UserStats>({ streakFreezes: 0, totalXp: 0 });
+  const [habits, setHabits] = useState<Habit[]>(() => {
+    const saved = localStorage.getItem('flow_habits');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [logs, setLogs] = useState<HabitLog>(() => {
+    const saved = localStorage.getItem('flow_logs');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [stats, setStats] = useState<UserStats>(() => {
+    const saved = localStorage.getItem('flow_stats');
+    return saved ? JSON.parse(saved) : { streakFreezes: 0, totalXp: 0 };
+  });
 
   const [insight, setInsight] = useState<AIInsight | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [showHabitManager, setShowHabitManager] = useState(false);
   const [popId, setPopId] = useState<string | null>(null);
   
+  // Navigation State
   const [activeView, setActiveView] = useState<'dashboard' | 'detail' | 'master'>('dashboard');
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
-
-  // Monitor Auth State
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Sync with Firestore
-  useEffect(() => {
-    if (!user) {
-      setHabits([]);
-      setLogs({});
-      setStats({ streakFreezes: 0, totalXp: 0 });
-      return;
-    }
-
-    const docRef = doc(db, 'users', user.uid, 'data', 'appState');
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data) {
-          setHabits(data.habits || []);
-          setLogs(data.logs || {});
-          setStats(data.stats || { streakFreezes: 0, totalXp: 0 });
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  // Push updates to Firestore
-  const syncToCloud = async (newHabits: Habit[], newLogs: HabitLog, newStats: UserStats) => {
-    if (!user) return;
-    try {
-      await setDoc(doc(db, 'users', user.uid, 'data', 'appState'), {
-        habits: newHabits,
-        logs: newLogs,
-        stats: newStats,
-        updatedAt: Date.now()
-      });
-    } catch (e) {
-      console.error("Cloud sync failed:", e);
-    }
-  };
 
   const weekDates = useMemo(() => {
     const dates = [];
@@ -105,7 +60,14 @@ const App: React.FC = () => {
     return dates;
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem('flow_habits', JSON.stringify(habits));
+    localStorage.setItem('flow_logs', JSON.stringify(logs));
+    localStorage.setItem('flow_stats', JSON.stringify(stats));
+  }, [habits, logs, stats]);
+
   const calculateXpReward = (difficulty: number) => {
+    // 1=10, 2=25, 3=45, 4=70, 5=100
     const rewards = [0, 10, 25, 45, 70, 100];
     return rewards[difficulty] || 15;
   };
@@ -114,51 +76,30 @@ const App: React.FC = () => {
     const habit = habits.find(h => h.id === habitId);
     const isNowDone = !logs[date]?.[habitId];
     
-    let newXp = stats.totalXp;
     if (isNowDone && habit) {
       setPopId(`${habitId}-${date}`);
       setTimeout(() => setPopId(null), 400);
-      newXp += calculateXpReward(habit.difficulty);
+      const xpReward = calculateXpReward(habit.difficulty);
+      setStats(prev => ({ ...prev, totalXp: prev.totalXp + xpReward }));
     } else if (!isNowDone && habit) {
-      newXp = Math.max(0, newXp - calculateXpReward(habit.difficulty));
+      const xpReward = calculateXpReward(habit.difficulty);
+      setStats(prev => ({ ...prev, totalXp: Math.max(0, prev.totalXp - xpReward) }));
     }
-
-    const newLogs = { ...logs };
-    const dayLogs = { ...(newLogs[date] || {}) };
-    dayLogs[habitId] = !dayLogs[habitId];
-    newLogs[date] = dayLogs;
-
-    const newStats = { ...stats, totalXp: newXp };
-    setLogs(newLogs);
-    setStats(newStats);
-    syncToCloud(habits, newLogs, newStats);
+    
+    setLogs(prev => {
+      const dayLogs = { ...(prev[date] || {}) };
+      dayLogs[habitId] = !dayLogs[habitId];
+      return { ...prev, [date]: dayLogs };
+    });
   };
 
   const removeHabit = useCallback((id: string) => {
-    const newHabits = habits.filter(h => h.id !== id);
-    setHabits(newHabits);
-    syncToCloud(newHabits, logs, stats);
+    setHabits(prev => prev.filter(h => h.id !== id));
     if (selectedHabitId === id) {
         setActiveView('dashboard');
         setSelectedHabitId(null);
     }
-  }, [selectedHabitId, habits, logs, stats, user]);
-
-  const addHabit = (name: string, cat: string, diff: number, time?: string) => {
-    const newHabit: Habit = { 
-      id: crypto.randomUUID(), 
-      name, 
-      category: cat, 
-      difficulty: diff, 
-      createdAt: Date.now(), 
-      color: 'green', 
-      reminderTime: time 
-    };
-    const newHabits = [...habits, newHabit];
-    setHabits(newHabits);
-    syncToCloud(newHabits, logs, stats);
-    setShowHabitManager(false);
-  };
+  }, [selectedHabitId]);
 
   const calculateStreak = useCallback(() => {
     let streak = 0;
@@ -192,20 +133,9 @@ const App: React.FC = () => {
 
   const selectedHabit = habits.find(h => h.id === selectedHabitId);
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-        <Loader2 className="text-[#39d353] animate-spin" size={48} />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthGateway />;
-  }
-
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] pb-32">
+      {/* Premium Navbar */}
       <header className="glass-nav sticky top-0 px-6 py-4 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => setActiveView('dashboard')}>
@@ -224,9 +154,9 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 bg-[#21262d]/50 border border-[#30363d] px-4 py-2 rounded-2xl mr-2">
-              <UserIcon size={14} className="text-[#8b949e]" />
-              <span className="text-[10px] font-bold text-[#8b949e] uppercase truncate max-w-[100px]">{user.email?.split('@')[0]}</span>
+            <div className="flex items-center gap-2 bg-[#21262d]/50 border border-[#30363d] px-4 py-2 rounded-2xl">
+              <Flame size={18} className="text-orange-500 fill-orange-500" />
+              <span className="text-sm font-bold font-heading text-white">{currentStreak} Day Streak</span>
             </div>
             
             <button 
@@ -236,26 +166,21 @@ const App: React.FC = () => {
             >
               {loadingAI ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
             </button>
-            
-            <button 
-                onClick={() => signOut(auth)}
-                className="w-10 h-10 flex items-center justify-center hover:bg-red-500/10 rounded-2xl border border-[#30363d] text-[#8b949e] hover:text-red-500 transition-all"
-                title="Logout"
-            >
-              <LogOut size={18} />
-            </button>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#238636] to-[#39d353] border border-white/10 shadow-inner" />
           </div>
         </div>
       </header>
 
       {activeView === 'dashboard' ? (
         <main className="max-w-6xl mx-auto px-6 mt-12 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Dashboard Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div 
               className="lg:col-span-2 premium-card p-8 relative overflow-hidden group cursor-pointer hover:border-[#39d353]/50"
               onClick={() => setActiveView('master')}
             >
-               <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full blur-[100px] transition-all duration-1000 opacity-20"
+               <div 
+                 className="absolute -right-20 -top-20 w-64 h-64 rounded-full blur-[100px] transition-all duration-1000 opacity-20"
                  style={{ backgroundColor: todayProgress > 0 ? '#39d353' : '#30363d' }}
                />
                <div className="relative z-10 flex flex-col h-full justify-between">
@@ -273,7 +198,8 @@ const App: React.FC = () => {
                           <span className="text-[10px] font-bold text-[#39d353] uppercase tracking-widest flex items-center gap-1">View Deep Analytics <ChevronRight size={12}/></span>
                       </div>
                       <div className="w-full bg-[#21262d] h-3 rounded-2xl p-[3px] border border-[#30363d]">
-                          <div className="h-full rounded-full bg-gradient-to-r from-[#238636] to-[#39d353] transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(57,211,83,0.4)]" 
+                          <div 
+                            className="h-full rounded-full bg-gradient-to-r from-[#238636] to-[#39d353] transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(57,211,83,0.4)]" 
                             style={{ width: `${todayProgress}%` }}
                           />
                       </div>
@@ -289,6 +215,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
+          {/* Routine Table */}
           <section className="premium-card overflow-hidden">
             <div className="p-8 flex items-center justify-between border-b border-[#30363d]/50 bg-[#1c2128]/30">
               <h3 className="text-xl font-bold font-heading text-white flex items-center gap-3">
@@ -351,7 +278,10 @@ const App: React.FC = () => {
       ) : activeView === 'detail' ? (
         <main className="max-w-6xl mx-auto px-6 mt-12 animate-in fade-in slide-in-from-right-4 duration-500">
            <div className="flex items-center gap-4 mb-8">
-             <button onClick={() => setActiveView('dashboard')} className="p-3 bg-[#21262d] border border-[#30363d] rounded-2xl text-[#8b949e] hover:text-white transition-all">
+             <button 
+               onClick={() => setActiveView('dashboard')}
+               className="p-3 bg-[#21262d] border border-[#30363d] rounded-2xl text-[#8b949e] hover:text-white transition-all"
+             >
                <ArrowLeft size={20} />
              </button>
              <div>
@@ -359,12 +289,18 @@ const App: React.FC = () => {
                 <h1 className="text-3xl font-bold font-heading text-white tracking-tight">Performance Breakdown</h1>
              </div>
            </div>
-           {selectedHabit && <HabitDetail habit={selectedHabit} logs={logs} onToggle={toggleHabit} />}
+
+           {selectedHabit && (
+             <HabitDetail habit={selectedHabit} logs={logs} onToggle={toggleHabit} />
+           )}
         </main>
       ) : (
         <main className="max-w-6xl mx-auto px-6 mt-12 animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4 mb-8">
-            <button onClick={() => setActiveView('dashboard')} className="p-3 bg-[#21262d] border border-[#30363d] rounded-2xl text-[#8b949e] hover:text-white transition-all">
+            <button 
+              onClick={() => setActiveView('dashboard')}
+              className="p-3 bg-[#21262d] border border-[#30363d] rounded-2xl text-[#8b949e] hover:text-white transition-all"
+            >
               <ArrowLeft size={20} />
             </button>
             <div>
@@ -376,6 +312,7 @@ const App: React.FC = () => {
         </main>
       )}
 
+      {/* Footer HUD */}
       <footer className="fixed bottom-0 left-0 right-0 glass-nav p-5 z-40">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-8">
@@ -388,10 +325,11 @@ const App: React.FC = () => {
                     <span className="text-xs font-bold uppercase tracking-widest font-heading text-white">{stats.totalXp} XP Collected</span>
                 </div>
             </div>
-            <div className="text-[10px] font-bold text-[#30363d] uppercase tracking-[0.3em]">Cloud Node: {user.uid.slice(0, 8)}</div>
+            <div className="text-[10px] font-bold text-[#30363d] uppercase tracking-[0.3em]">HabitFlow Engine v2.3.0</div>
         </div>
       </footer>
 
+      {/* Habit Manager Modal */}
       {showHabitManager && (
         <div className="fixed inset-0 z-[100] bg-[#0d1117ee] backdrop-blur-xl flex items-center justify-center p-6">
           <div className="w-full max-w-md bg-[#161b22] border border-[#30363d] rounded-[32px] p-10 relative">
@@ -400,7 +338,10 @@ const App: React.FC = () => {
             </button>
             <HabitManager 
               habits={habits} 
-              onAdd={addHabit}
+              onAdd={(name, cat, diff, time) => {
+                setHabits([...habits, { id: crypto.randomUUID(), name, category: cat, difficulty: diff, createdAt: Date.now(), color: 'green', reminderTime: time }]);
+                setShowHabitManager(false);
+              }} 
               onRemove={removeHabit} 
             />
           </div>
