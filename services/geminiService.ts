@@ -21,7 +21,7 @@ export const getHabitInsights = async (habits: Habit[], logs: HabitLog): Promise
   try {
     // Fix: Using ai.models.generateContent with both model and prompt, and moving persona to systemInstruction
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash-exp",
       contents: prompt,
       config: {
         systemInstruction: "You are a world-class productivity coach. Analyze the user's progress, provide 3 concrete suggestions for improvement, and one high-energy motivational quote. Output must be in JSON format.",

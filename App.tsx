@@ -3,6 +3,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Habit, HabitLog, AIInsight, UserStats } from './types';
 import { formatDate, getPastDates } from './constants';
 import { getHabitInsights } from './services/geminiService';
+import { getUserData, updateAllUserData } from './services/dbService';
+import { useAuth } from './context/AuthContext';
+import AuthPage from './components/AuthPage';
 import Heatmap from './components/Heatmap';
 import HabitManager from './components/HabitManager';
 import HabitDetail from './components/HabitDetail';
@@ -22,24 +25,41 @@ import {
   ChevronRight,
   TrendingUp,
   Target,
-  ArrowLeft
+  ArrowLeft,
+  LogOut
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [habits, setHabits] = useState<Habit[]>(() => {
-    const saved = localStorage.getItem('flow_habits');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { user, token, logout, loading: authLoading } = useAuth();
 
-  const [logs, setLogs] = useState<HabitLog>(() => {
-    const saved = localStorage.getItem('flow_logs');
-    return saved ? JSON.parse(saved) : {};
-  });
+  // If not authenticated, show login page
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-[#39d353] w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg shadow-[#39d353]/30 mx-auto mb-4 animate-pulse">
+            <Zap className="text-white fill-white" size={32} strokeWidth={2.5} />
+          </div>
+          <p className="text-sm font-bold text-[#8b949e] uppercase tracking-widest">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const [stats, setStats] = useState<UserStats>(() => {
-    const saved = localStorage.getItem('flow_stats');
-    return saved ? JSON.parse(saved) : { streakFreezes: 0, totalXp: 0 };
-  });
+  if (!user || !token) {
+    return <AuthPage />;
+  }
+
+  return <HabitFlowApp />;
+};
+
+const HabitFlowApp: React.FC = () => {
+  const { user, logout } = useAuth();
+  
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [logs, setLogs] = useState<HabitLog>({});
+  const [stats, setStats] = useState<UserStats>({ streakFreezes: 0, totalXp: 0 });
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const [insight, setInsight] = useState<AIInsight | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -50,6 +70,40 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<'dashboard' | 'detail' | 'master'>('dashboard');
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
 
+  // Load user data from database on mount
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userData = await getUserData();
+        if (userData) {
+          setHabits(userData.habits || []);
+          setLogs(userData.logs || {});
+          setStats(userData.stats || { streakFreezes: 0, totalXp: 0 });
+        }
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+      } finally {
+        setDataLoaded(true);
+      }
+    };
+    loadUserData();
+  }, []); // Load once on mount
+
+  // Save data to database when it changes (debounced)
+  useEffect(() => {
+    if (!dataLoaded) return; // Don't save until initial load is complete
+    
+    const saveTimer = setTimeout(async () => {
+      try {
+        await updateAllUserData(habits, logs, stats);
+      } catch (error) {
+        console.error('Failed to save user data:', error);
+      }
+    }, 500); // Debounce saves by 500ms
+    
+    return () => clearTimeout(saveTimer);
+  }, [habits, logs, stats, dataLoaded]);
+
   const weekDates = useMemo(() => {
     const dates = [];
     for (let i = 6; i >= 0; i--) {
@@ -59,12 +113,6 @@ const App: React.FC = () => {
     }
     return dates;
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('flow_habits', JSON.stringify(habits));
-    localStorage.setItem('flow_logs', JSON.stringify(logs));
-    localStorage.setItem('flow_stats', JSON.stringify(stats));
-  }, [habits, logs, stats]);
 
   const calculateXpReward = (difficulty: number) => {
     // 1=10, 2=25, 3=45, 4=70, 5=100
@@ -133,6 +181,20 @@ const App: React.FC = () => {
 
   const selectedHabit = habits.find(h => h.id === selectedHabitId);
 
+  // Show loading screen while data is being fetched
+  if (!dataLoaded) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-[#39d353] w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg shadow-[#39d353]/30 mx-auto mb-4 animate-pulse">
+            <Zap className="text-white fill-white" size={32} strokeWidth={2.5} />
+          </div>
+          <p className="text-sm font-bold text-[#8b949e] uppercase tracking-widest">Loading Your Habits...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] pb-32">
       {/* Premium Navbar */}
@@ -166,7 +228,16 @@ const App: React.FC = () => {
             >
               {loadingAI ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
             </button>
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#238636] to-[#39d353] border border-white/10 shadow-inner" />
+            
+            <button 
+                onClick={logout}
+                className="w-10 h-10 flex items-center justify-center hover:bg-red-500/10 rounded-2xl border border-[#30363d] text-[#8b949e] hover:text-red-400 hover:border-red-500/30 transition-all"
+                title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
+            
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#238636] to-[#39d353] border border-white/10 shadow-inner" title={user?.name || user?.email} />
           </div>
         </div>
       </header>

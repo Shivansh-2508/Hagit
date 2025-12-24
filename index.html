@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap');
-        
+
         :root {
             --gh-bg: #0d1117;
             --gh-secondary: #161b22;
@@ -25,28 +25,60 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        h1, h2, h3, h4, h5, .font-heading {
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        .font-heading {
             font-family: 'Plus Jakarta Sans', sans-serif;
             letter-spacing: -0.02em;
         }
 
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
 
         @keyframes spring-pop {
-            0% { transform: scale(1); }
-            40% { transform: scale(1.15); }
-            70% { transform: scale(0.95); }
-            100% { transform: scale(1); }
+            0% {
+                transform: scale(1);
+            }
+
+            40% {
+                transform: scale(1.15);
+            }
+
+            70% {
+                transform: scale(0.95);
+            }
+
+            100% {
+                transform: scale(1);
+            }
         }
 
         .animate-spring {
             animation: spring-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--gh-bg); }
-        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 20px; border: 2px solid var(--gh-bg); }
-        ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gh-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 20px;
+            border: 2px solid var(--gh-bg);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
 
         .premium-card {
             background: linear-gradient(145deg, #161b22 0%, #0d1117 100%);
@@ -57,7 +89,7 @@
 
         .premium-card:hover {
             border-color: #484f58;
-            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
         }
 
         .check-circle {
@@ -107,7 +139,7 @@
             border-bottom: 1px solid rgba(48, 54, 61, 0.5);
         }
     </style>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "react/": "https://esm.sh/react@^19.2.3/",
@@ -119,7 +151,10 @@
 }
 </script>
 </head>
+
 <body>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
