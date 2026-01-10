@@ -1,0 +1,29 @@
+{
+  "name": "habitflow-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "HabitFlow backend server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "habitflow",
+    "backend",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^5.9.0",
+    "mongoose": "^9.1.2",
+    "nodemon": "^3.1.11"
+  }
+}

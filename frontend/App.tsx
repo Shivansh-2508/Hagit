@@ -4,7 +4,7 @@ import { Habit, HabitLog, AIInsight, UserStats } from './types';
 import { formatDate, getPastDates } from './constants';
 import { getHabitInsights } from './services/geminiService';
 import { getUserData, updateAllUserData } from './services/dbService';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './components/context/AuthContext';
 import AuthPage from './components/AuthPage';
 import Heatmap from './components/Heatmap';
 import HabitManager from './components/HabitManager';

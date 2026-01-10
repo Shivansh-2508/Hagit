@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.MONGODB_URI': JSON.stringify(env.MONGODB_URI)
+        // Don't expose MongoDB URI to frontend - backend handles this
+        'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL)
       },
       resolve: {
         alias: {
