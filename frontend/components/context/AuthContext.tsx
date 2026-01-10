@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       try {
-        const response = await fetch(`${API_URL}/api/auth/me`, {
+        const response = await fetch(`${API_URL}/auth/me`, {
           headers: {
             Authorization: `Bearer ${savedToken}`,
           },
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await fetch(`${API_URL}/api/auth/login`, {
+    const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    const response = await fetch(`${API_URL}/api/auth/signup`, {
+    const response = await fetch(`${API_URL}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name }),
