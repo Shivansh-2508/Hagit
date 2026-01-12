@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { HabitLog, DayData } from '../types';
 import { GH_COLORS, formatDate } from '../constants';
 
@@ -9,15 +9,25 @@ interface HeatmapProps {
 }
 
 const Heatmap: React.FC<HeatmapProps> = ({ logs, totalHabits }) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    const handleResize = () => checkMobile();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const data = useMemo(() => {
     const days: DayData[] = [];
     const today = new Date();
+    const daysToShow = isMobile ? 182 : 364;
     
-    for (let i = 364; i >= 0; i--) {
+    for (let i = daysToShow; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateStr = formatDate(date);
-      
       const dayLogs = logs[dateStr] || {};
       const completedCount = Object.values(dayLogs).filter(v => v).length;
       
@@ -29,11 +39,10 @@ const Heatmap: React.FC<HeatmapProps> = ({ logs, totalHabits }) => {
         else if (percentage >= 0.2) level = 2;
         else if (percentage > 0) level = 1;
       }
-
       days.push({ date: dateStr, count: completedCount, level });
     }
     return days;
-  }, [logs, totalHabits]);
+  }, [logs, totalHabits, isMobile]);
 
   const getColor = (level: number) => {
     switch(level) {
@@ -69,54 +78,83 @@ const Heatmap: React.FC<HeatmapProps> = ({ logs, totalHabits }) => {
     return labels;
   }, [weeks]);
 
+  const gap = isMobile ? 2 : 4;
+  const cellSize = isMobile ? 10 : 12;
+
   return (
     <div className="space-y-6 w-full">
-      <div className="heatmap-container overflow-x-auto pb-4 scrollbar-hide w-full">
-        <div className="min-w-full lg:min-w-max">
-            <div className="flex text-[8px] lg:text-[9px] text-[#8b949e] h-4 relative font-bold uppercase tracking-[0.1em]">
-                {monthLabels.map((m, idx) => (
-                    <span key={idx} className="absolute text-[7px] lg:text-[9px]" style={{ left: `${m.weekIndex * 13}px` }}>{m.name}</span>
-                ))}
-            </div>
-            <div className="flex gap-[2px] lg:gap-[4px] mt-2">
-              <div className="flex flex-col gap-[2px] lg:gap-[4px] pr-2 lg:pr-4 text-[7px] lg:text-[8px] text-[#30363d] justify-between h-[90px] lg:h-[105px] pt-1 font-black uppercase tracking-tighter">
-                <span>M</span>
-                <span>W</span>
-                <span>F</span>
-              </div>
-              {weeks.map((week, wIdx) => (
-                <div key={wIdx} className="flex flex-col gap-[2px] lg:gap-[4px]">
-                  {week.map((day) => (
-                    <div
-                      key={day.date}
-                      className="w-[10px] lg:w-[12px] h-[10px] lg:h-[12px] rounded-[2px] lg:rounded-[3px] transition-all hover:scale-[1.4] hover:z-20 cursor-pointer shadow-sm relative group"
-                      style={{ 
-                        backgroundColor: getColor(day.level),
-                        boxShadow: day.level > 2 ? `0 0 10px ${getColor(day.level)}44` : 'none'
-                      }}
-                    >
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#21262d] text-white text-[7px] lg:text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-30 border border-[#30363d]">
-                            {day.date}: {day.count} ritual(s)
-                        </div>
+      <div className="overflow-x-auto pb-4 scrollbar-hide w-full">
+        {/* Month Labels */}
+        <div className="flex mb-4 h-6">
+          <div style={{ width: isMobile ? '40px' : '50px' }} />
+          <div className="flex gap-px" style={{ gap: `${gap}px` }}>
+            {weeks.map((week, wIdx) => {
+              const matchingLabel = monthLabels.find(l => l.weekIndex === wIdx);
+              return (
+                <div key={`label-${wIdx}`} style={{ width: `${cellSize}px` }}>
+                  {matchingLabel && (
+                    <div className="text-[7px] lg:text-[9px] font-bold text-[#8b949e] uppercase tracking-widest">
+                      {matchingLabel.name}
                     </div>
-                  ))}
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Grid */}
+        <div className="flex gap-px" style={{ gap: `${gap}px` }}>
+          {/* Day Labels (M/W/F) */}
+          <div className="flex flex-col justify-between" style={{ width: isMobile ? '40px' : '50px' }}>
+            <div className="text-[7px] text-[#30363d] font-black uppercase">M</div>
+            <div className="text-[7px] text-[#30363d] font-black uppercase">W</div>
+            <div className="text-[7px] text-[#30363d] font-black uppercase">F</div>
+          </div>
+
+          {/* Heatmap Cells */}
+          <div className="flex gap-px" style={{ gap: `${gap}px` }}>
+            {weeks.map((week, wIdx) => (
+              <div key={`week-${wIdx}`} className="flex flex-col gap-px" style={{ gap: `${gap}px` }}>
+                {week.map((day) => (
+                  <div
+                    key={day.date}
+                    className="rounded transition-all hover:scale-125 hover:z-20 cursor-pointer shadow-sm relative group"
+                    style={{
+                      width: `${cellSize}px`,
+                      height: `${cellSize}px`,
+                      backgroundColor: getColor(day.level),
+                      boxShadow: day.level > 2 ? `0 0 10px ${getColor(day.level)}44` : 'none',
+                    }}
+                  >
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#21262d] text-white text-[7px] lg:text-[9px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-30 border border-[#30363d]">
+                      {day.date}: {day.count} habit(s)
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-      <div className="flex items-center justify-end gap-2 lg:gap-3 text-[7px] lg:text-[9px] text-[#8b949e] font-bold uppercase tracking-[0.2em] overflow-x-auto pb-2">
-        <span className="opacity-50 whitespace-nowrap">Base Flow</span>
-        <div className="flex gap-[2px] lg:gap-[4px] flex-shrink-0">
+
+      {/* Legend */}
+      <div className="flex items-center justify-end gap-2 lg:gap-3 text-[7px] lg:text-[9px] text-[#8b949e] font-bold uppercase tracking-[0.2em]">
+        <span className="opacity-50">Base Flow</span>
+        <div className="flex gap-px" style={{ gap: `${gap}px` }}>
           {[0, 1, 2, 3, 4].map(l => (
-            <div 
-                key={l} 
-                className="w-[10px] lg:w-[12px] h-[10px] lg:h-[12px] rounded-[2px] lg:rounded-[3px]" 
-                style={{ backgroundColor: getColor(l as any) }} 
+            <div
+              key={l}
+              className="rounded"
+              style={{
+                width: `${cellSize}px`,
+                height: `${cellSize}px`,
+                backgroundColor: getColor(l),
+              }}
             />
           ))}
         </div>
-        <span className="opacity-50 whitespace-nowrap">Peak Performance</span>
+        <span className="opacity-50">Peak Performance</span>
       </div>
     </div>
   );

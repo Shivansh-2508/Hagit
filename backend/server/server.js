@@ -47,6 +47,11 @@ app.use(express.json());
 // Connect to MongoDB
 await connectDB();
 
+// ============ HEALTH CHECK (Keep-Alive) ============
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // ============ AUTH ROUTES ============
 
 // Signup

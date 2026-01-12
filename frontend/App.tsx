@@ -90,6 +90,23 @@ const HabitFlowApp: React.FC = () => {
     loadUserData();
   }, []); // Load once on mount
 
+  // Keep backend alive (prevent Render free tier sleep)
+  useEffect(() => {
+    const wakeUpInterval = setInterval(async () => {
+      try {
+        // Ping your backend health endpoint
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiUrl}/`, { method: 'GET' });
+        const data = await response.json();
+        console.log('Backend wakeup call:', data);
+      } catch (err) {
+        console.error('Failed to ping backend:', err);
+      }
+    }, 4 * 60 * 1000); // Ping every 4 minutes to stay under 15-minute threshold
+
+    return () => clearInterval(wakeUpInterval);
+  }, []);
+
   // Save data to database when it changes (debounced)
   useEffect(() => {
     if (!dataLoaded) return; // Don't save until initial load is complete
@@ -218,48 +235,51 @@ const HabitFlowApp: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] pb-32">
+    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] pb-20 lg:pb-32">
       {/* Premium Navbar */}
-      <header className="glass-nav sticky top-0 px-6 py-4 z-50">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => setActiveView('dashboard')}>
-            <div className="bg-[#39d353] w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg shadow-[#39d353]/30">
-              <Zap className="text-white fill-white" size={22} strokeWidth={2.5} />
+      <header className="glass-nav sticky top-0 px-3 lg:px-6 py-3 lg:py-4 z-50">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 lg:gap-4 cursor-pointer flex-1 min-w-0" onClick={() => setActiveView('dashboard')}>
+            <div className="bg-[#39d353] w-8 lg:w-10 h-8 lg:h-10 rounded-2xl flex items-center justify-center shadow-lg shadow-[#39d353]/30 flex-shrink-0">
+              <Zap className="text-white fill-white lg:w-[22px] lg:h-[22px]" size={18} strokeWidth={2.5} />
             </div>
-            <div className="hidden sm:block">
-                <span className="text-xl font-bold font-heading text-white tracking-tight uppercase italic leading-none block">HabitFlow</span>
-                <div className="flex items-center gap-2 mt-1">
-                    <div className="w-20 h-1 bg-[#21262d] rounded-full overflow-hidden">
+            <div className="hidden sm:block min-w-0">
+                <span className="text-base lg:text-xl font-bold font-heading text-white tracking-tight uppercase italic leading-none block truncate">HabitFlow</span>
+                <div className="flex items-center gap-1 lg:gap-2 mt-1 hidden lg:flex">
+                    <div className="w-16 lg:w-20 h-1 bg-[#21262d] rounded-full overflow-hidden">
                         <div className="h-full bg-[#39d353]" style={{ width: `${levelProgress}%` }} />
                     </div>
-                    <span className="text-[9px] font-bold text-[#8b949e] uppercase tracking-widest">Level {flowLevel}</span>
+                    <span className="text-[8px] lg:text-[9px] font-bold text-[#8b949e] uppercase tracking-widest whitespace-nowrap">Level {flowLevel}</span>
                 </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#21262d]/50 border border-[#30363d] px-4 py-2 rounded-2xl">
-              <Flame size={18} className="text-orange-500 fill-orange-500" />
-              <span className="text-sm font-bold font-heading text-white">{currentStreak} Day Streak</span>
+          <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
+            <div className="hidden sm:flex items-center gap-2 bg-[#21262d]/50 border border-[#30363d] px-3 lg:px-4 py-1.5 lg:py-2 rounded-2xl">
+              <Flame size={16} className="text-orange-500 fill-orange-500 flex-shrink-0" />
+              <span className="text-xs lg:text-sm font-bold font-heading text-white whitespace-nowrap">{currentStreak}d</span>
             </div>
             
             <button 
                 onClick={async () => { setLoadingAI(true); setInsight(await getHabitInsights(habits, logs)); setLoadingAI(false); }}
-                className="w-10 h-10 flex items-center justify-center hover:bg-[#21262d] rounded-2xl border border-[#30363d] text-[#8b949e] hover:text-[#39d353] transition-all"
+                className="w-8 lg:w-10 h-8 lg:h-10 flex items-center justify-center hover:bg-[#21262d] rounded-2xl border border-[#30363d] text-[#8b949e] hover:text-[#39d353] transition-all flex-shrink-0"
                 title="AI Coach"
             >
-              {loadingAI ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+              {loadingAI ? <Loader2 size={16} className="animate-spin lg:w-[18px] lg:h-[18px]" /> : <Sparkles size={16} className="lg:w-[18px] lg:h-[18px]" />}
             </button>
+            
+            <div className="flex items-center gap-2 px-3 lg:px-4 py-1.5 lg:py-2 rounded-2xl bg-[#21262d]/30 border border-[#30363d]/50">
+              <div className="w-5 lg:w-6 h-5 lg:h-6 rounded-lg bg-gradient-to-br from-[#238636] to-[#39d353] border border-white/10 flex-shrink-0" />
+              <span className="text-[10px] lg:text-xs font-bold text-white whitespace-nowrap truncate max-w-[80px] sm:max-w-[100px] lg:max-w-none">{user?.name || user?.email}</span>
+            </div>
             
             <button 
                 onClick={logout}
-                className="w-10 h-10 flex items-center justify-center hover:bg-red-500/10 rounded-2xl border border-[#30363d] text-[#8b949e] hover:text-red-400 hover:border-red-500/30 transition-all"
+                className="w-8 lg:w-10 h-8 lg:h-10 flex items-center justify-center hover:bg-red-500/10 rounded-2xl border border-[#30363d] text-[#8b949e] hover:text-red-400 hover:border-red-500/30 transition-all flex-shrink-0"
                 title="Logout"
             >
-              <LogOut size={18} />
+              <LogOut size={16} className="lg:w-[18px] lg:h-[18px]" />
             </button>
-            
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#238636] to-[#39d353] border border-white/10 shadow-inner" title={user?.name || user?.email} />
           </div>
         </div>
       </header>
@@ -290,7 +310,7 @@ const HabitFlowApp: React.FC = () => {
                           <span className="text-2xl lg:text-4xl font-black font-heading text-white">{todayProgress}<span className="text-sm lg:text-lg opacity-50 ml-1">%</span></span>
                           <span className="text-[8px] lg:text-[10px] font-bold text-[#39d353] uppercase tracking-widest flex items-center gap-0.5 lg:gap-1 hidden lg:flex">View Deep Analytics <ChevronRight size={12}/></span>
                       </div>
-                      <div className="w-full bg-[#21262d] h-2 lg:h-3 rounded-2xl p-[3px] border border-[#30363d]">
+                      <div className="w-full min-w-0 bg-[#21262d] h-2 lg:h-3 rounded-2xl p-[3px] border border-[#30363d]">
                           <div 
                             className="h-full rounded-full bg-gradient-to-r from-[#238636] to-[#39d353] transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(57,211,83,0.4)]" 
                             style={{ width: `${todayProgress}%` }}
