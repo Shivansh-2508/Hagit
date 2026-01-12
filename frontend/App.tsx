@@ -102,7 +102,7 @@ const HabitFlowApp: React.FC = () => {
       } catch (err) {
         console.error('Failed to ping backend:', err);
       }
-    }, 4 * 60 * 1000); // Ping every 4 minutes to stay under 15-minute threshold
+    }, 4 * 60 * 10); // Ping every 4 minutes to stay under 15-minute threshold
 
     return () => clearInterval(wakeUpInterval);
   }, []);
