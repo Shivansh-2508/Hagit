@@ -90,12 +90,15 @@ const HabitFlowApp: React.FC = () => {
     loadUserData();
   }, []); // Load once on mount
 
+
+  
   // Keep backend alive (prevent Render free tier sleep)
   useEffect(() => {
     const wakeUpInterval = setInterval(async () => {
       try {
         // Ping your backend health endpoint
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        const apiUrl = process.env.REACT_APP_API_URL || 'https://hagit.onrender.com';
+        console.log('Backend wakeup call from:', apiUrl);
         const response = await fetch(`${apiUrl}/`, { method: 'GET' });
         const data = await response.json();
         console.log('Backend wakeup call:', data);
