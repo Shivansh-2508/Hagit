@@ -7,19 +7,26 @@ import { Plus, Trash2, Bell, Hash, Clock, Star } from 'lucide-react';
 interface HabitManagerProps {
   habits: Habit[];
   onAdd: (name: string, category: string, difficulty: number, reminderTime?: string) => void;
+  onEdit?: (id: string, name: string, category: string, difficulty: number, reminderTime?: string) => void;
   onRemove: (id: string) => void;
+  editingHabit?: Habit | null;
+  onEditCancel?: () => void;
 }
 
-const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onRemove }) => {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
-  const [reminderTime, setReminderTime] = useState('');
-  const [difficulty, setDifficulty] = useState(3);
+const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onEdit, onRemove, editingHabit, onEditCancel }) => {
+  const [name, setName] = useState(editingHabit?.name || '');
+  const [category, setCategory] = useState(editingHabit?.category || CATEGORIES[0]);
+  const [reminderTime, setReminderTime] = useState(editingHabit?.reminderTime || '');
+  const [difficulty, setDifficulty] = useState(editingHabit?.difficulty || 3);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onAdd(name.trim(), category, difficulty, reminderTime || undefined);
+      if (editingHabit && onEdit) {
+        onEdit(editingHabit.id, name.trim(), category, difficulty, reminderTime || undefined);
+      } else {
+        onAdd(name.trim(), category, difficulty, reminderTime || undefined);
+      }
       setName('');
       setReminderTime('');
       setDifficulty(3);
@@ -37,11 +44,22 @@ const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onRemove }) 
     }
   };
 
+  const getDifficultyColor = (difficulty: number) => {
+    switch (difficulty) {
+      case 1: return { accent: '#39d353', bar: 'bg-[#39d353]', border: 'border-[#39d353]' }; // Green - Easy
+      case 2: return { accent: '#58a6ff', bar: 'bg-[#58a6ff]', border: 'border-[#58a6ff]' }; // Blue - Medium
+      case 3: return { accent: '#d29922', bar: 'bg-[#d29922]', border: 'border-[#d29922]' }; // Orange - Hard
+      case 4: return { accent: '#f85149', bar: 'bg-[#f85149]', border: 'border-[#f85149]' }; // Red - Elite
+      case 5: return { accent: '#dd00ff', bar: 'bg-[#dd00ff]', border: 'border-[#dd00ff]' }; // Purple - Legendary
+      default: return { accent: '#39d353', bar: 'bg-[#39d353]', border: 'border-[#39d353]' };
+    }
+  };
+
   return (
     <div className="space-y-10">
       <div className="space-y-2">
-        <h3 className="text-2xl font-bold text-white tracking-tight font-heading">Refine Your Flow</h3>
-        <p className="text-sm text-[#8b949e]">Structure your routine for maximum growth.</p>
+        <h3 className="text-2xl font-bold text-white tracking-tight font-heading">{editingHabit ? 'Edit Your Habit' : 'Refine Your Flow'}</h3>
+        <p className="text-sm text-[#8b949e]">{editingHabit ? 'Update your habit details.' : 'Structure your routine for maximum growth.'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -114,7 +132,7 @@ const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onRemove }) 
           disabled={!name.trim()}
           className="w-full bg-gradient-to-r from-[#2ea043] to-[#39d353] text-white py-4 rounded-2xl text-[11px] font-bold uppercase tracking-[0.3em] hover:brightness-110 active:scale-95 transition-all disabled:opacity-30 shadow-xl shadow-[#39d35322]"
         >
-          Add To Routine
+          {editingHabit ? 'Save Changes' : 'Add To Routine'}
         </button>
       </form>
 
@@ -125,15 +143,17 @@ const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onRemove }) 
         </div>
         
         <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-          {habits.map(habit => (
-            <div key={habit.id} className="flex items-center justify-between p-4 bg-[#0d1117] border border-[#30363d] rounded-2xl group hover:border-[#484f58] transition-all">
+          {habits.map(habit => {
+            const diffColor = getDifficultyColor(habit.difficulty);
+            return (
+            <div key={habit.id} className="flex items-center justify-between p-4 bg-[#0d1117] border border-[#30363d] rounded-2xl group hover:border-[#484f58] transition-all" style={{borderColor: diffColor.accent + '33'}}>
               <div className="flex items-center gap-3">
-                <div className="w-1 h-6 rounded-full bg-[#39d353]" />
+                <div className="w-1 h-6 rounded-full" style={{backgroundColor: diffColor.accent}} />
                 <div>
                     <p className="font-bold text-sm text-white">{habit.name}</p>
                     <div className="flex items-center gap-2 mt-1">
                        <span className="text-[9px] font-bold text-[#8b949e] uppercase tracking-widest">{habit.category}</span>
-                       <span className="text-[9px] font-bold text-[#39d353] flex items-center gap-0.5 uppercase tracking-widest">
+                       <span className="text-[9px] font-bold flex items-center gap-0.5 uppercase tracking-widest" style={{color: diffColor.accent}}>
                             <Star size={8} fill="currentColor" /> Lvl {habit.difficulty}
                        </span>
                     </div>
@@ -147,7 +167,8 @@ const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onRemove }) 
                 <Trash2 size={16} />
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

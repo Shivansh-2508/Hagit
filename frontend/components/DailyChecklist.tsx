@@ -11,6 +11,17 @@ interface DailyChecklistProps {
   selectedDate: string;
 }
 
+const getDifficultyColor = (difficulty: number) => {
+  switch (difficulty) {
+    case 1: return '#39d353'; // Green - Easy
+    case 2: return '#58a6ff'; // Blue - Medium
+    case 3: return '#d29922'; // Orange - Hard
+    case 4: return '#f85149'; // Red - Elite
+    case 5: return '#dd00ff'; // Purple - Legendary
+    default: return '#39d353';
+  }
+};
+
 const DailyChecklist: React.FC<DailyChecklistProps> = ({ habits, logs, onToggle, selectedDate }) => {
   const currentLogs = logs[selectedDate] || {};
   
@@ -40,14 +51,16 @@ const DailyChecklist: React.FC<DailyChecklistProps> = ({ habits, logs, onToggle,
       <div className="bg-[#0d1117]">
         {habits.map((habit, index) => {
           const isDone = currentLogs[habit.id];
+          const diffColor = getDifficultyColor(habit.difficulty);
           return (
             <button
               key={habit.id}
               onClick={() => onToggle(habit.id, selectedDate)}
-              className={`w-full flex items-center justify-between p-4 text-left border-b border-[#30363d] last:border-0 hover:bg-[#161b22] transition-all group ${isDone ? 'opacity-70' : ''}`}
+              className={`w-full flex items-center justify-between p-4 text-left border-b last:border-0 hover:bg-[#161b22] transition-all group ${isDone ? 'opacity-70' : ''}`}
+              style={{borderColor: isDone ? 'rgb(48, 54, 61)' : diffColor + '33'}}
             >
               <div className="flex items-center gap-4">
-                <div className={`transition-all transform ${isDone ? 'scale-110 text-[#39d353]' : 'text-[#8b949e] group-hover:text-[#c9d1d9]'}`}>
+                <div className={`transition-all transform ${isDone ? 'scale-110' : 'text-[#8b949e] group-hover:text-[#c9d1d9]'}`} style={{color: isDone ? diffColor : 'inherit'}}>
                   {isDone ? <CheckCircle2 size={24} /> : <Circle size={24} />}
                 </div>
                 <div>
@@ -57,7 +70,11 @@ const DailyChecklist: React.FC<DailyChecklistProps> = ({ habits, logs, onToggle,
                   <p className="text-[10px] text-[#8b949e]">{habit.category}</p>
                 </div>
               </div>
-              <div className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${isDone ? 'bg-[#23863622] text-[#39d353] border-[#23863644]' : 'bg-[#161b22] text-[#8b949e] border-[#30363d]'}`}>
+              <div className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors`} style={{
+                backgroundColor: isDone ? diffColor + '22' : '#161b22',
+                color: isDone ? diffColor : '#8b949e',
+                borderColor: isDone ? diffColor + '44' : '#30363d'
+              }}>
                 {isDone ? 'COMPLETED' : 'PENDING'}
               </div>
             </button>

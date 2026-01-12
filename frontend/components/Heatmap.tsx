@@ -70,32 +70,32 @@ const Heatmap: React.FC<HeatmapProps> = ({ logs, totalHabits }) => {
   }, [weeks]);
 
   return (
-    <div className="space-y-6">
-      <div className="heatmap-container overflow-x-auto pb-4 scrollbar-hide">
-        <div className="min-w-max">
-            <div className="flex text-[9px] text-[#8b949e] h-4 relative font-bold uppercase tracking-[0.1em]">
+    <div className="space-y-6 w-full">
+      <div className="heatmap-container overflow-x-auto pb-4 scrollbar-hide w-full">
+        <div className="min-w-full lg:min-w-max">
+            <div className="flex text-[8px] lg:text-[9px] text-[#8b949e] h-4 relative font-bold uppercase tracking-[0.1em]">
                 {monthLabels.map((m, idx) => (
-                    <span key={idx} className="absolute" style={{ left: `${m.weekIndex * 15}px` }}>{m.name}</span>
+                    <span key={idx} className="absolute text-[7px] lg:text-[9px]" style={{ left: `${m.weekIndex * 13}px` }}>{m.name}</span>
                 ))}
             </div>
-            <div className="flex gap-[4px] mt-2">
-              <div className="flex flex-col gap-[4px] pr-4 text-[8px] text-[#30363d] justify-between h-[105px] pt-1 font-black uppercase tracking-tighter">
-                <span>Mon</span>
-                <span>Wed</span>
-                <span>Fri</span>
+            <div className="flex gap-[2px] lg:gap-[4px] mt-2">
+              <div className="flex flex-col gap-[2px] lg:gap-[4px] pr-2 lg:pr-4 text-[7px] lg:text-[8px] text-[#30363d] justify-between h-[90px] lg:h-[105px] pt-1 font-black uppercase tracking-tighter">
+                <span>M</span>
+                <span>W</span>
+                <span>F</span>
               </div>
               {weeks.map((week, wIdx) => (
-                <div key={wIdx} className="flex flex-col gap-[4px]">
+                <div key={wIdx} className="flex flex-col gap-[2px] lg:gap-[4px]">
                   {week.map((day) => (
                     <div
                       key={day.date}
-                      className="w-[12px] h-[12px] rounded-[3px] transition-all hover:scale-[1.4] hover:z-20 cursor-pointer shadow-sm relative group"
+                      className="w-[10px] lg:w-[12px] h-[10px] lg:h-[12px] rounded-[2px] lg:rounded-[3px] transition-all hover:scale-[1.4] hover:z-20 cursor-pointer shadow-sm relative group"
                       style={{ 
                         backgroundColor: getColor(day.level),
                         boxShadow: day.level > 2 ? `0 0 10px ${getColor(day.level)}44` : 'none'
                       }}
                     >
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#21262d] text-white text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-30 border border-[#30363d]">
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#21262d] text-white text-[7px] lg:text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-30 border border-[#30363d]">
                             {day.date}: {day.count} ritual(s)
                         </div>
                     </div>
@@ -105,18 +105,18 @@ const Heatmap: React.FC<HeatmapProps> = ({ logs, totalHabits }) => {
             </div>
         </div>
       </div>
-      <div className="flex items-center justify-end gap-3 text-[9px] text-[#8b949e] font-bold uppercase tracking-[0.2em]">
-        <span className="opacity-50">Base Flow</span>
-        <div className="flex gap-[4px]">
+      <div className="flex items-center justify-end gap-2 lg:gap-3 text-[7px] lg:text-[9px] text-[#8b949e] font-bold uppercase tracking-[0.2em] overflow-x-auto pb-2">
+        <span className="opacity-50 whitespace-nowrap">Base Flow</span>
+        <div className="flex gap-[2px] lg:gap-[4px] flex-shrink-0">
           {[0, 1, 2, 3, 4].map(l => (
             <div 
                 key={l} 
-                className="w-[12px] h-[12px] rounded-[3px]" 
+                className="w-[10px] lg:w-[12px] h-[10px] lg:h-[12px] rounded-[2px] lg:rounded-[3px]" 
                 style={{ backgroundColor: getColor(l as any) }} 
             />
           ))}
         </div>
-        <span className="opacity-50">Peak Performance</span>
+        <span className="opacity-50 whitespace-nowrap">Peak Performance</span>
       </div>
     </div>
   );
